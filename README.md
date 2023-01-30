@@ -116,6 +116,12 @@ project.clj
     str)
 => "http://example.com?9dc63f4f67ef9ba0"
 
+;; Custom query-string key encoding
+(map->query-string {"http://example.com" nil}
+                   {:key-encode-pred-fn #(not (str/starts-with? % "http"))
+                    :nillable? true})
+=> "http://example.com"
+
 ;; Instances of URI are printed with a #lambdaisland/uri reader tag. To read
 ;; them back from EDN, use the provided readers.
 (require '[clojure.edn :as edn])

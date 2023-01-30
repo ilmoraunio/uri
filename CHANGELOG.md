@@ -3,6 +3,7 @@
 ## Added
 
 - Add `nillable?` boolean option to `map->query-string` to support query-string keys without values
+- Add `key-encode-pred-fn` option to `map->query-string` to support decoded URLs as query-string keys
 
 ## Fixed
 

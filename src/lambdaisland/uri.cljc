@@ -199,14 +199,14 @@
          (map encode-char)
          (apply str))))
 
-(defn- encode-param-pair [k v]
-  (str (query-encode
-        (cond
-          (simple-ident? k)
-          (name k)
-          (qualified-ident? k)
-          (str (namespace k) "/" (name k))
-          :else (str k)))
+(defn- encode-param-pair [k v {:keys [key-encode-pred-fn]}]
+  (str (cond-> (cond
+                 (simple-ident? k)
+                 (name k)
+                 (qualified-ident? k)
+                 (str (namespace k) "/" (name k))
+                 :else (str k))
+         (key-encode-pred-fn k) (query-encode))
        (when (some? v) "=")
        (some-> v str query-encode)))
 
@@ -218,25 +218,30 @@
 
   Takes the following options:
 
+  - `:key-encode-pred-fn` is a 1-arity predicate function that accepts a query
+    parameter key, tells whether that query parameter key should be encoded,
+    encodes by default
   - `nillable?` whether to return query param key alone when value is nil,
     defaults to `false` (empty returned)"
   ([m]
    (map->query-string m nil))
-  ([m {:keys [nillable?]
-       :or {nillable? false}
+  ([m {:keys [key-encode-pred-fn nillable?]
+       :or {key-encode-pred-fn (constantly true)
+            nillable? false}
        :as _opts}]
-   (when (seq m)
-     (->> m
-          (mapcat (fn [[k v]]
-                    (cond
-                      (nil? v)
-                      (if nillable? [(encode-param-pair k v)] [])
-                      (coll? v)
-                      (map (partial encode-param-pair k) v)
-                      :else
-                      [(encode-param-pair k v)])))
-          (interpose "&")
-          (apply str)))))
+   (let [param-opts {:key-encode-pred-fn key-encode-pred-fn}]
+     (when (seq m)
+       (->> m
+            (mapcat (fn [[k v]]
+                      (cond
+                        (nil? v)
+                        (if nillable? [(encode-param-pair k v param-opts)] [])
+                        (coll? v)
+                        (map #(encode-param-pair k % param-opts) v)
+                        :else
+                        [(encode-param-pair k v param-opts)])))
+            (interpose "&")
+            (apply str))))))
 
 (defn assoc-query*
   "Add additional query parameters to a URI. Takes a URI (or coercible to URI) and
